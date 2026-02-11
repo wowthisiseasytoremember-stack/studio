@@ -13,16 +13,12 @@ import { findSimilarDocumentsUsingEmbeddings } from "@/ai/flows/find-similar-doc
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 
-type Results = {
-  analysis: AnalyzeImageAndExtractMetadataOutput;
-  similarItems: string[];
-};
-
 export default function Home() {
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [processingMessage, setProcessingMessage] = useState("Analyzing Image...");
-  const [results, setResults] = useState<Results | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isFindingSimilar, setIsFindingSimilar] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<AnalyzeImageAndExtractMetadataOutput | null>(null);
+  const [similarItems, setSimilarItems] = useState<string[] | null>(null);
   const { toast } = useToast();
 
   const resizeImage = (file: File, maxWidth: number, maxHeight: number): Promise<string> => {
@@ -69,41 +65,50 @@ export default function Home() {
   };
 
   const processImage = async (file: File) => {
-    setIsProcessing(true);
-    setResults(null);
-
+    // 1. Initial setup
+    setIsAnalyzing(true);
+    setAnalysisResult(null);
+    setSimilarItems(null);
+    
     try {
-      setProcessingMessage("Preparing your image...");
+      // 2. Resize
       const dataUrl = await resizeImage(file, 512, 512);
       setImageDataUrl(dataUrl);
 
-      // Step 1: Analyze Image and Extract Metadata
-      setProcessingMessage("Appraising your item...");
-      const analysisResult = await analyzeImageAndExtractMetadata({ photoDataUri: dataUrl });
+      // 3. Analyze
+      const analysis = await analyzeImageAndExtractMetadata({ photoDataUri: dataUrl });
+      setAnalysisResult(analysis);
+      setIsAnalyzing(false);
+      setIsFindingSimilar(true);
 
-      // Step 2: Generate Embeddings
-      setProcessingMessage("Cataloging details...");
-      const { imageEmbedding, metadataEmbedding } = await generateEmbeddingsForImageAndMetadata({
-        imageDataUri: dataUrl,
-        metadata: JSON.stringify(analysisResult),
-      });
+      // 4. Find similar items in the background
+      try {
+        const { imageEmbedding, metadataEmbedding } = await generateEmbeddingsForImageAndMetadata({
+            imageDataUri: dataUrl,
+            metadata: JSON.stringify(analysis),
+        });
 
-      // Step 3: Find Similar Documents
-      setProcessingMessage("Checking for similar items...");
-      // The mock flow returns an empty array, so we'll add dummy data for demonstration.
-      const similarDocsFromAI = await findSimilarDocumentsUsingEmbeddings({
-        imageEmbedding,
-        metadataEmbedding,
-        firestoreCollection: "items",
-        documentId: `doc-${Date.now()}`,
-      });
-      
-      const dummySimilarItems = ["doc-abc-123", "doc-def-456", "doc-ghi-789"];
+        const similarDocsFromAI = await findSimilarDocumentsUsingEmbeddings({
+            imageEmbedding,
+            metadataEmbedding,
+            firestoreCollection: "items",
+            documentId: `doc-${Date.now()}`,
+        });
+        
+        const dummySimilarItems = ["doc-abc-123", "doc-def-456", "doc-ghi-789"];
 
-      setResults({ 
-          analysis: analysisResult, 
-          similarItems: similarDocsFromAI.length > 0 ? similarDocsFromAI : dummySimilarItems
-      });
+        setSimilarItems(similarDocsFromAI.length > 0 ? similarDocsFromAI : dummySimilarItems);
+      } catch (similarError) {
+          console.error("Finding similar items failed:", similarError);
+          setSimilarItems([]); // On error, show "no results" instead of spinning forever.
+          toast({
+            variant: "destructive",
+            title: "Similarity Search Failed",
+            description: "Could not find similar items.",
+          });
+      } finally {
+        setIsFindingSimilar(false);
+      }
       
     } catch (error) {
       console.error("Processing failed:", error);
@@ -112,28 +117,31 @@ export default function Home() {
         title: "Analysis Failed",
         description: "There was an error processing your image. Please try again.",
       });
-    } finally {
-      setIsProcessing(false);
+      // Reset everything on initial failure
+      handleReset();
     }
   };
 
   const handleReset = () => {
     setImageDataUrl(null);
-    setResults(null);
-    setIsProcessing(false);
+    setAnalysisResult(null);
+    setSimilarItems(null);
+    setIsAnalyzing(false);
+    setIsFindingSimilar(false);
   };
 
   const renderContent = () => {
-    if (isProcessing) {
-      return <LoadingIndicator message={processingMessage} />;
+    if (isAnalyzing) {
+      return <LoadingIndicator message={"Appraising your item..."} />;
     }
-    if (results && imageDataUrl) {
+    if (analysisResult && imageDataUrl) {
       return (
         <div className="space-y-8">
           <ResultsDisplay
             imageDataUrl={imageDataUrl}
-            analysis={results.analysis}
-            similarItems={results.similarItems}
+            analysis={analysisResult}
+            similarItems={similarItems}
+            isFindingSimilar={isFindingSimilar}
           />
           <div className="text-center">
             <Button size="lg" onClick={handleReset}>
@@ -144,7 +152,7 @@ export default function Home() {
         </div>
       );
     }
-    return <FileUpload onFileUpload={processImage} isProcessing={isProcessing} />;
+    return <FileUpload onFileUpload={processImage} isProcessing={isAnalyzing} />;
   };
 
   return (
