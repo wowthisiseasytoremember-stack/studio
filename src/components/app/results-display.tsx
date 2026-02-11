@@ -1,21 +1,17 @@
 import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FileJson, Files, Gem, LoaderCircle, Tags } from "lucide-react";
+import { FileJson, Gem, Tags } from "lucide-react";
 import { AnalyzeImageAndExtractMetadataOutput } from "@/ai/flows/analyze-image-and-extract-metadata";
 
 type ResultsDisplayProps = {
   imageDataUrl: string;
   analysis: AnalyzeImageAndExtractMetadataOutput;
-  similarItems: string[] | null;
-  isFindingSimilar: boolean;
 };
 
 export function ResultsDisplay({
   imageDataUrl,
   analysis,
-  similarItems,
-  isFindingSimilar,
 }: ResultsDisplayProps) {
     const { descriptiveName, valuation, reasoning, tags, otherMetadata } = analysis;
 
@@ -36,35 +32,6 @@ export function ResultsDisplay({
                                 data-ai-hint="user uploaded image"
                             />
                         </div>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Files className="w-5 h-5 text-primary" />
-                            Suggested Similar Items
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        {isFindingSimilar ? (
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <LoaderCircle className="h-4 w-4 animate-spin" />
-                                <span>Checking for similar items...</span>
-                            </div>
-                        ) : similarItems && similarItems.length > 0 ? (
-                            <div className="flex flex-wrap gap-2">
-                                {similarItems.map((id) => (
-                                    <Badge key={id} variant="secondary" className="font-mono">
-                                        {id}
-                                    </Badge>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="text-sm text-muted-foreground">
-                                No similar items found in the database.
-                            </p>
-                        )}
                     </CardContent>
                 </Card>
             </div>
