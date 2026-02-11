@@ -21,7 +21,7 @@ const AnalyzeImageAndExtractMetadataInputSchema = z.object({
 export type AnalyzeImageAndExtractMetadataInput = z.infer<typeof AnalyzeImageAndExtractMetadataInputSchema>;
 
 const AnalyzeImageAndExtractMetadataOutputSchema = z.object({
-  metadata: z.record(z.any()).describe('The extracted metadata from the image.'),
+  metadata: z.record(z.string(), z.any()).describe('The extracted metadata from the image.'),
 });
 export type AnalyzeImageAndExtractMetadataOutput = z.infer<typeof AnalyzeImageAndExtractMetadataOutputSchema>;
 
@@ -32,8 +32,9 @@ export async function analyzeImageAndExtractMetadata(input: AnalyzeImageAndExtra
 const prompt = ai.definePrompt({
   name: 'analyzeImageAndExtractMetadataPrompt',
   input: {schema: AnalyzeImageAndExtractMetadataInputSchema},
-  output: {schema: AnalyzeImageAndExtractMetadataOutputSchema},
+  // output: {schema: AnalyzeImageAndExtractMetadataOutputSchema}, // Removed to avoid schema validation issues.
   prompt: `You are an expert AI model specializing in analyzing images and extracting relevant metadata. Analyze the image and extract all relevant metadata in JSON format.
+Your output must be only the raw JSON object, without any surrounding text or markdown.
 
 Image: {{media url=photoDataUri}}`,
 });
@@ -45,7 +46,16 @@ const analyzeImageAndExtractMetadataFlow = ai.defineFlow(
     outputSchema: AnalyzeImageAndExtractMetadataOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    return output!;
+    const response = await prompt(input);
+    const textOutput = response.text;
+    try {
+      // The model may still wrap the output in markdown, so we clean it.
+      const jsonText = textOutput.replace(/^```json\s*/, '').replace(/```$/, '').trim();
+      const metadata = JSON.parse(jsonText);
+      return {metadata};
+    } catch (e) {
+      console.error('Failed to parse metadata JSON. Raw output:', textOutput, e);
+      throw new Error('AI failed to return valid JSON metadata.');
+    }
   }
 );
