@@ -13,16 +13,24 @@ import {z} from 'genkit';
 
 const AnalyzeImageAndExtractMetadataOutputSchemaForBundle = z.object({
     descriptiveName: z.string().describe("A short, descriptive name for the item."),
-    valuation: z.string().describe("A concise summary of the item's potential value (e.g., 'Potentially valuable', 'Collector\'s item', 'Low value')."),
+    estimatedValueRange: z.object({
+        low: z.string(),
+        high: z.string(),
+    }),
     reasoning: z.string().describe("A brief explanation for the valuation."),
     tags: z.array(z.string()).describe("An array of 3-5 relevant keywords or tags."),
     otherMetadata: z.array(z.object({
-        key: z.string().describe("The name of the metadata field (e.g., 'Material', 'Period', 'Condition')."),
-        value: z.string().describe("The value of the metadata field."),
-    })).describe('An array of key-value pairs for any other interesting metadata extracted from the image.'),
+        key: z.string(),
+        value: z.string(),
+    })),
+    // Not including comparableSales to keep the prompt cleaner for bundling
 });
 
-const FindBundlesInInventoryInputSchema = z.array(AnalyzeImageAndExtractMetadataOutputSchemaForBundle);
+const FindBundlesInInventoryInputSchema = z.array(AnalyzeImageAndExtractMetadataOutputSchemaForBundle.partial({
+    reasoning: true,
+    tags: true,
+    otherMetadata: true,
+}));
 
 export type FindBundlesInInventoryInput = z.infer<typeof FindBundlesInInventoryInputSchema>;
 
@@ -52,8 +60,7 @@ For each bundle you suggest, provide a catchy name, a description of why the ite
 Here is the list of available items:
 {{#each this}}
 - Item: {{this.descriptiveName}}
-  - Valuation: {{this.valuation}}
-  - Reasoning: {{this.reasoning}}
+  - Estimated Value: {{this.estimatedValueRange.low}} - {{this.estimatedValueRange.high}}
   - Tags: {{#each this.tags}}{{this}}, {{/each}}
 {{/each}}
 `,

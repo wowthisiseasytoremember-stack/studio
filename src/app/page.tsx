@@ -10,9 +10,9 @@ import { useToast } from "@/hooks/use-toast";
 import { analyzeImageAndExtractMetadata, AnalyzeImageAndExtractMetadataOutput } from "@/ai/flows/analyze-image-and-extract-metadata";
 import { findBundlesInInventory, FindBundlesInInventoryOutput } from "@/ai/flows/find-bundles-in-inventory";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Sparkles, LoaderCircle } from "lucide-react";
+import { ArrowLeft, Sparkles, LoaderCircle, Gem } from "lucide-react";
 import NextImage from "next/image";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -154,7 +154,7 @@ export default function Home() {
           <div className="text-center">
             <Button size="lg" onClick={handleAnalyzeAnother}>
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Analyze Another Image
+              Analyze Another Item
             </Button>
           </div>
         </div>
@@ -168,32 +168,43 @@ export default function Home() {
           <Card>
             <CardHeader>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                <CardTitle>Your Inventory ({inventory.length} items)</CardTitle>
-                <Button onClick={handleFindBundles} disabled={isFindingBundles || inventory.length < 2} className="mt-4 sm:mt-0">
+                <div className="space-y-1">
+                    <CardTitle>Your Inventory ({inventory.length} items)</CardTitle>
+                    <CardDescription>This is your collection of appraised items. When you're ready, find bundles!</CardDescription>
+                </div>
+                <Button onClick={handleFindBundles} disabled={isFindingBundles || inventory.length < 2} className="mt-4 sm:mt-0 shrink-0">
                   {isFindingBundles ? (
                     <LoaderCircle className="mr-2 animate-spin" />
                   ) : (
                     <Sparkles className="mr-2" />
                   )}
-                  {isFindingBundles ? "Finding Bundles..." : "Find Product Bundles"}
+                  {isFindingBundles ? "Finding Bundles..." : `Find Product Bundles`}
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 {inventory.map((item, index) => (
-                  <div key={index} className="relative aspect-square rounded-lg overflow-hidden border">
-                    <NextImage 
-                      src={item.imageDataUrl} 
-                      alt={item.analysis.descriptiveName} 
-                      fill 
-                      className="object-cover" 
-                      data-ai-hint="inventory item"
-                    />
-                     <div className="absolute bottom-0 left-0 right-0 bg-black/50 p-2 text-white text-xs truncate">
-                        {item.analysis.descriptiveName}
-                      </div>
-                  </div>
+                  <Card key={index} className="overflow-hidden flex flex-col">
+                    <CardContent className="p-0">
+                        <div className="relative aspect-square">
+                            <NextImage 
+                                src={item.imageDataUrl} 
+                                alt={item.analysis.descriptiveName} 
+                                fill 
+                                className="object-cover" 
+                                data-ai-hint="inventory item"
+                            />
+                        </div>
+                    </CardContent>
+                    <div className="p-4 flex-grow flex flex-col">
+                        <h3 className="font-semibold text-base flex-grow">{item.analysis.descriptiveName}</h3>
+                        <p className="text-sm text-primary font-semibold mt-2 flex items-center gap-2">
+                           <Gem className="w-4 h-4" />
+                           {item.analysis.estimatedValueRange.low} - {item.analysis.estimatedValueRange.high}
+                        </p>
+                    </div>
+                  </Card>
                 ))}
               </div>
             </CardContent>
@@ -223,6 +234,9 @@ export default function Home() {
                     </div>
                   </div>
                 ))}
+                {bundles && bundles.length === 0 && (
+                    <p className="text-center text-muted-foreground py-8">No potential bundles found in your current inventory.</p>
+                )}
               </div>
               <AlertDialogFooter>
                 <AlertDialogAction onClick={() => setBundles(null)}>Great, thanks!</AlertDialogAction>
