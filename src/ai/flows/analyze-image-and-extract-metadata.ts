@@ -25,7 +25,10 @@ const AnalyzeImageAndExtractMetadataOutputSchema = z.object({
     valuation: z.string().describe("A concise summary of the item's potential value (e.g., 'Potentially valuable', 'Collector\'s item', 'Low value')."),
     reasoning: z.string().describe("A brief explanation for the valuation."),
     tags: z.array(z.string()).describe("An array of 3-5 relevant keywords or tags."),
-    otherMetadata: z.record(z.string(), z.any()).describe('An object containing any other interesting metadata extracted from the image (e.g., material, period, condition).'),
+    otherMetadata: z.array(z.object({
+        key: z.string().describe("The name of the metadata field (e.g., 'Material', 'Period', 'Condition')."),
+        value: z.string().describe("The value of the metadata field."),
+    })).describe('An array of key-value pairs for any other interesting metadata extracted from the image.'),
 }).describe('The extracted metadata and valuation for the item in the image.');
 export type AnalyzeImageAndExtractMetadataOutput = z.infer<typeof AnalyzeImageAndExtractMetadataOutputSchema>;
 

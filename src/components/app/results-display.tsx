@@ -93,7 +93,7 @@ export function ResultsDisplay({
                     </CardContent>
                 </Card>
                 
-                {otherMetadata && Object.keys(otherMetadata).length > 0 && (
+                {otherMetadata && otherMetadata.length > 0 && (
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
@@ -103,10 +103,10 @@ export function ResultsDisplay({
                         </CardHeader>
                         <CardContent>
                             <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                                {Object.entries(otherMetadata).map(([key, value]) => (
+                                {otherMetadata.map(({ key, value }) => (
                                     <div key={key} className="flex justify-between border-b pb-1">
                                         <dt className="text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</dt>
-                                        <dd className="text-right font-medium">{String(value)}</dd>
+                                        <dd className="text-right font-medium">{value}</dd>
                                     </div>
                                 ))}
                             </dl>
