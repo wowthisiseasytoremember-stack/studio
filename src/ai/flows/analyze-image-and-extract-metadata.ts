@@ -1,9 +1,9 @@
 'use server';
 
 /**
- * @fileOverview Analyzes an image using Gemini 1.5 Pro and extracts relevant metadata.
+ * @fileOverview Analyzes an image using Gemini and provides a valuation.
  *
- * - analyzeImageAndExtractMetadata - A function that handles the image analysis and metadata extraction process.
+ * - analyzeImageAndExtractMetadata - A function that handles the image analysis and valuation process.
  * - AnalyzeImageAndExtractMetadataInput - The input type for the analyzeImageAndExtractMetadata function.
  * - AnalyzeImageAndExtractMetadataOutput - The return type for the analyzeImageAndExtractMetadata function.
  */
@@ -21,9 +21,14 @@ const AnalyzeImageAndExtractMetadataInputSchema = z.object({
 export type AnalyzeImageAndExtractMetadataInput = z.infer<typeof AnalyzeImageAndExtractMetadataInputSchema>;
 
 const AnalyzeImageAndExtractMetadataOutputSchema = z.object({
-  metadata: z.record(z.string(), z.any()).describe('The extracted metadata from the image.'),
-});
+    descriptiveName: z.string().describe("A short, descriptive name for the item."),
+    valuation: z.string().describe("A concise summary of the item's potential value (e.g., 'Potentially valuable', 'Collector\'s item', 'Low value')."),
+    reasoning: z.string().describe("A brief explanation for the valuation."),
+    tags: z.array(z.string()).describe("An array of 3-5 relevant keywords or tags."),
+    otherMetadata: z.record(z.string(), z.any()).describe('An object containing any other interesting metadata extracted from the image (e.g., material, period, condition).'),
+}).describe('The extracted metadata and valuation for the item in the image.');
 export type AnalyzeImageAndExtractMetadataOutput = z.infer<typeof AnalyzeImageAndExtractMetadataOutputSchema>;
+
 
 export async function analyzeImageAndExtractMetadata(input: AnalyzeImageAndExtractMetadataInput): Promise<AnalyzeImageAndExtractMetadataOutput> {
   return analyzeImageAndExtractMetadataFlow(input);
@@ -32,9 +37,9 @@ export async function analyzeImageAndExtractMetadata(input: AnalyzeImageAndExtra
 const prompt = ai.definePrompt({
   name: 'analyzeImageAndExtractMetadataPrompt',
   input: {schema: AnalyzeImageAndExtractMetadataInputSchema},
-  // output: {schema: AnalyzeImageAndExtractMetadataOutputSchema}, // Removed to avoid schema validation issues.
-  prompt: `You are an expert AI model specializing in analyzing images and extracting relevant metadata. Analyze the image and extract all relevant metadata in JSON format.
-Your output must be only the raw JSON object, without any surrounding text or markdown.
+  output: {schema: AnalyzeImageAndExtractMetadataOutputSchema},
+  prompt: `You are an expert appraiser for a high-end auction house. Your goal is to determine if the item in the image is valuable and why.
+Analyze the image and provide a concise valuation and the reasoning behind it. Also, provide a descriptive name for the item and some relevant tags.
 
 Image: {{media url=photoDataUri}}`,
 });
@@ -47,15 +52,10 @@ const analyzeImageAndExtractMetadataFlow = ai.defineFlow(
   },
   async input => {
     const response = await prompt(input);
-    const textOutput = response.text;
-    try {
-      // The model may still wrap the output in markdown, so we clean it.
-      const jsonText = textOutput.replace(/^```json\s*/, '').replace(/```$/, '').trim();
-      const metadata = JSON.parse(jsonText);
-      return {metadata};
-    } catch (e) {
-      console.error('Failed to parse metadata JSON. Raw output:', textOutput, e);
-      throw new Error('AI failed to return valid JSON metadata.');
+    const output = response.output;
+    if (!output) {
+      throw new Error('AI failed to return valid analysis.');
     }
+    return output;
   }
 );

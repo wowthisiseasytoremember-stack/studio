@@ -7,20 +7,21 @@ import { ResultsDisplay } from "@/components/app/results-display";
 import { LoadingIndicator } from "@/components/app/loading-indicator";
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/hooks/use-toast";
-import { analyzeImageAndExtractMetadata } from "@/ai/flows/analyze-image-and-extract-metadata";
+import { analyzeImageAndExtractMetadata, AnalyzeImageAndExtractMetadataOutput } from "@/ai/flows/analyze-image-and-extract-metadata";
 import { generateEmbeddingsForImageAndMetadata } from "@/ai/flows/generate-embeddings-for-image-and-metadata";
 import { findSimilarDocumentsUsingEmbeddings } from "@/ai/flows/find-similar-documents-using-embeddings";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 
 type Results = {
-  metadata: Record<string, any>;
+  analysis: AnalyzeImageAndExtractMetadataOutput;
   similarItems: string[];
 };
 
 export default function Home() {
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingMessage, setProcessingMessage] = useState("Analyzing Image...");
   const [results, setResults] = useState<Results | null>(null);
   const { toast } = useToast();
 
@@ -72,19 +73,23 @@ export default function Home() {
     setResults(null);
 
     try {
+      setProcessingMessage("Preparing your image...");
       const dataUrl = await resizeImage(file, 512, 512);
       setImageDataUrl(dataUrl);
 
       // Step 1: Analyze Image and Extract Metadata
-      const { metadata } = await analyzeImageAndExtractMetadata({ photoDataUri: dataUrl });
+      setProcessingMessage("Appraising your item...");
+      const analysisResult = await analyzeImageAndExtractMetadata({ photoDataUri: dataUrl });
 
       // Step 2: Generate Embeddings
+      setProcessingMessage("Cataloging details...");
       const { imageEmbedding, metadataEmbedding } = await generateEmbeddingsForImageAndMetadata({
         imageDataUri: dataUrl,
-        metadata: JSON.stringify(metadata),
+        metadata: JSON.stringify(analysisResult),
       });
 
       // Step 3: Find Similar Documents
+      setProcessingMessage("Checking for similar items...");
       // The mock flow returns an empty array, so we'll add dummy data for demonstration.
       const similarDocsFromAI = await findSimilarDocumentsUsingEmbeddings({
         imageEmbedding,
@@ -96,7 +101,7 @@ export default function Home() {
       const dummySimilarItems = ["doc-abc-123", "doc-def-456", "doc-ghi-789"];
 
       setResults({ 
-          metadata, 
+          analysis: analysisResult, 
           similarItems: similarDocsFromAI.length > 0 ? similarDocsFromAI : dummySimilarItems
       });
       
@@ -120,14 +125,14 @@ export default function Home() {
 
   const renderContent = () => {
     if (isProcessing) {
-      return <LoadingIndicator />;
+      return <LoadingIndicator message={processingMessage} />;
     }
     if (results && imageDataUrl) {
       return (
         <div className="space-y-8">
           <ResultsDisplay
             imageDataUrl={imageDataUrl}
-            metadata={results.metadata}
+            analysis={results.analysis}
             similarItems={results.similarItems}
           />
           <div className="text-center">
