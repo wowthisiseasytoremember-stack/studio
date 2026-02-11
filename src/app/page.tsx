@@ -11,7 +11,7 @@ import { analyzeImageAndExtractMetadata, AnalyzeImageAndExtractMetadataOutput } 
 import { findBundlesInInventory, FindBundlesInInventoryOutput } from "@/ai/flows/find-bundles-in-inventory";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Sparkles, LoaderCircle } from "lucide-react";
-import Image from "next/image";
+import NextImage from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   AlertDialog,
@@ -183,7 +183,7 @@ export default function Home() {
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
                 {inventory.map((item, index) => (
                   <div key={index} className="relative aspect-square rounded-lg overflow-hidden border">
-                    <Image 
+                    <NextImage 
                       src={item.imageDataUrl} 
                       alt={item.analysis.descriptiveName} 
                       fill 
