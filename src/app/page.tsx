@@ -24,62 +24,92 @@ export default function Home() {
   const [results, setResults] = useState<Results | null>(null);
   const { toast } = useToast();
 
+  const resizeImage = (file: File, maxWidth: number, maxHeight: number): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        if (!event.target?.result) {
+            return reject(new Error("Could not read image from file."));
+        }
+        img.src = event.target.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let { width, height } = img;
+
+          if (width > height) {
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            return reject(new Error('Could not get canvas context'));
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+
+          resolve(canvas.toDataURL(file.type));
+        };
+        img.onerror = (err) => reject(err);
+      };
+      reader.onerror = (err) => reject(err);
+    });
+  };
+
   const processImage = async (file: File) => {
     setIsProcessing(true);
     setResults(null);
 
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = async () => {
-      try {
-        const dataUrl = reader.result as string;
-        setImageDataUrl(dataUrl);
+    try {
+      const dataUrl = await resizeImage(file, 800, 800);
+      setImageDataUrl(dataUrl);
 
-        // Step 1: Analyze Image and Extract Metadata
-        const { metadata } = await analyzeImageAndExtractMetadata({ photoDataUri: dataUrl });
+      // Step 1: Analyze Image and Extract Metadata
+      const { metadata } = await analyzeImageAndExtractMetadata({ photoDataUri: dataUrl });
 
-        // Step 2: Generate Embeddings
-        const { imageEmbedding, metadataEmbedding } = await generateEmbeddingsForImageAndMetadata({
-          imageDataUri: dataUrl,
-          metadata: JSON.stringify(metadata),
-        });
+      // Step 2: Generate Embeddings
+      const { imageEmbedding, metadataEmbedding } = await generateEmbeddingsForImageAndMetadata({
+        imageDataUri: dataUrl,
+        metadata: JSON.stringify(metadata),
+      });
 
-        // Step 3: Find Similar Documents
-        // The mock flow returns an empty array, so we'll add dummy data for demonstration.
-        const similarDocsFromAI = await findSimilarDocumentsUsingEmbeddings({
-          imageEmbedding,
-          metadataEmbedding,
-          firestoreCollection: "items",
-          documentId: `doc-${Date.now()}`,
-        });
-        
-        const dummySimilarItems = ["doc-abc-123", "doc-def-456", "doc-ghi-789"];
+      // Step 3: Find Similar Documents
+      // The mock flow returns an empty array, so we'll add dummy data for demonstration.
+      const similarDocsFromAI = await findSimilarDocumentsUsingEmbeddings({
+        imageEmbedding,
+        metadataEmbedding,
+        firestoreCollection: "items",
+        documentId: `doc-${Date.now()}`,
+      });
+      
+      const dummySimilarItems = ["doc-abc-123", "doc-def-456", "doc-ghi-789"];
 
-        setResults({ 
-            metadata, 
-            similarItems: similarDocsFromAI.length > 0 ? similarDocsFromAI : dummySimilarItems
-        });
-        
-      } catch (error) {
-        console.error("Processing failed:", error);
-        toast({
-          variant: "destructive",
-          title: "Analysis Failed",
-          description: "There was an error processing your image. Please try again.",
-        });
-      } finally {
-        setIsProcessing(false);
-      }
-    };
-    reader.onerror = () => {
-        console.error("Failed to read file");
-        toast({
-          variant: "destructive",
-          title: "File Read Error",
-          description: "Could not read the selected file.",
-        });
-        setIsProcessing(false);
-    };
+      setResults({ 
+          metadata, 
+          similarItems: similarDocsFromAI.length > 0 ? similarDocsFromAI : dummySimilarItems
+      });
+      
+    } catch (error) {
+      console.error("Processing failed:", error);
+      toast({
+        variant: "destructive",
+        title: "Analysis Failed",
+        description: "There was an error processing your image. Please try again.",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleReset = () => {
