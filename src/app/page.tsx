@@ -72,7 +72,7 @@ export default function Home() {
     setResults(null);
 
     try {
-      const dataUrl = await resizeImage(file, 800, 800);
+      const dataUrl = await resizeImage(file, 512, 512);
       setImageDataUrl(dataUrl);
 
       // Step 1: Analyze Image and Extract Metadata
