@@ -1,0 +1,81 @@
+{
+  "entities": {
+    "userProfile": {
+      "title": "User Profile",
+      "description": "User profile information.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The user's unique ID." },
+        "email": { "type": "string", "format": "email", "description": "The user's email address." },
+        "displayName": { "type": "string", "description": "The user's display name." },
+        "photoURL": { "type": "string", "format": "uri", "description": "URL of the user's profile picture." }
+      },
+      "required": ["uid"]
+    },
+    "inventoryItem": {
+      "title": "Inventory Item",
+      "description": "An item in a user's inventory.",
+      "type": "object",
+      "properties": {
+        "imageDataUrl": { "type": "string", "description": "Data URL of the item's image." },
+        "analysis": { "$ref": "#/entities/analysisResult" },
+        "createdAt": { "type": "object", "description": "The server timestamp of when the item was created." }
+      },
+      "required": ["imageDataUrl", "analysis", "createdAt"]
+    },
+    "analysisResult": {
+      "title": "Analysis Result",
+      "description": "The result of the AI analysis of an item.",
+      "type": "object",
+      "properties": {
+        "descriptiveName": { "type": "string" },
+        "estimatedValueRange": {
+          "type": "object",
+          "properties": {
+            "low": { "type": "string" },
+            "high": { "type": "string" }
+          },
+          "required": ["low", "high"]
+        },
+        "reasoning": { "type": "string" },
+        "comparableSales": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "description": { "type": "string" },
+              "price": { "type": "string" }
+            },
+            "required": ["description", "price"]
+          }
+        },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "otherMetadata": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string" },
+              "value": { "type": "string" }
+            },
+            "required": ["key", "value"]
+          }
+        }
+      },
+      "required": ["descriptiveName", "estimatedValueRange", "reasoning"]
+    }
+  },
+  "auth": {
+    "providers": ["anonymous"]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/userProfile" },
+      "description": "User profile documents are stored here."
+    },
+    "/users/{userId}/inventory/{itemId}": {
+      "schema": { "$ref": "#/entities/inventoryItem" },
+      "description": "Each user's inventory items are stored in this sub-collection."
+    }
+  }
+}
